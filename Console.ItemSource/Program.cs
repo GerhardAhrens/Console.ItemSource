@@ -22,6 +22,7 @@ namespace Console.ItemSource
     using System;
     using System.Collections;
     using System.ComponentModel;
+    using System.Data;
 
     public class Program
     {
@@ -33,12 +34,16 @@ namespace Console.ItemSource
         private static void Main(string[] args)
         {
             CMenu mainMenu = new CMenu("Test ItemSource Property");
-            mainMenu.AddItem("Auswahl Menüpunkt 1", MenuPoint1);
+            mainMenu.AddItem("ItemSource Property", MenuPoint1);
             mainMenu.AddItem("Beenden", () => ApplicationExit());
             mainMenu.Show();
         }
 
-        public static IEnumerable ItemsSource { get; set; }
+        private static IEnumerable ItemsSource { get; set; }
+
+        private static string DisplayMemberPath { get; set; }
+
+        private static string SelectedValuePath { get; set; }
 
         private static void ApplicationExit()
         {
@@ -49,7 +54,9 @@ namespace Console.ItemSource
         {
             Console.Clear();
 
-            ItemsSource = LoadUsersFromDatabase();
+            /* Nur das Property 'Name' anzeigen */
+            DisplayMemberPath = "Name";
+            ItemsSource = LoadUsersFromDatabaseHS();
 
             if (ItemsSource == null)
             {
@@ -63,10 +70,10 @@ namespace Console.ItemSource
             }
 
             // 1. Typ bestimmen
-            var itemType = items.First().GetType();
+            var firstItem = items.First();
 
             // 2. Properties holen (WPF-Mechanismus!)
-            var properties = TypeDescriptor.GetProperties(itemType)
+            var properties = TypeDescriptor.GetProperties(firstItem)
                                            .Cast<PropertyDescriptor>()
                                            .ToList();
 
@@ -81,9 +88,15 @@ namespace Console.ItemSource
             {
                 for (int col = 0; col < properties.Count; col++)
                 {
+                    if (DisplayMemberPath != null && properties[col].Name != DisplayMemberPath)
+                    {
+                        continue;
+                    }
+
                     PropertyDescriptor prop = properties[col];
-                    string value = prop.GetValue(item)?.ToString();
-                    Console.WriteLine($"{value}|");
+                    var rawValue = prop.GetValue(item);
+                    var displayValue = DisplayMemberPath != null ? GetPropertyValue(item, DisplayMemberPath) : rawValue;
+                    Console.WriteLine($"{displayValue}|");
                 }
 
                 Console.Line();
@@ -92,11 +105,36 @@ namespace Console.ItemSource
             Console.Wait();
         }
 
+        private static object GetPropertyValue(object item, string path)
+        {
+            if (item == null || string.IsNullOrEmpty(path))
+            {
+                return item;
+            }
+
+            var props = TypeDescriptor.GetProperties(item);
+            var prop = props[path];
+
+            if (prop != null)
+            {
+                return prop.GetValue(item);
+            }
+
+            // Fallback für DataRowView
+            if (item is DataRowView drv && drv.Row.Table.Columns.Contains(path))
+            {
+                return drv[path];
+            }
+
+            return null;
+        }
+
+        /* Demo Daten */
         private sealed record User(int Id, string Name, bool IsActive);
 
         private static List<User> LoadUsersFromDatabase()
         {
-            Console.WriteLine("Lade Users aus der Datenbank …");
+            Console.WriteLine("Lade Users aus der Datenbank als List<T>");
 
             return
             [
@@ -105,6 +143,62 @@ namespace Console.ItemSource
                 new User(3, "Charlie", true),
                 new User(4, "Donald Duck", true)
             ];
+        }
+
+        private static HashSet<User> LoadUsersFromDatabaseHS()
+        {
+            Console.WriteLine("Lade Users aus der Datenbank als HashSet<T>");
+
+            return
+            [
+                new User(1, "Alice", false),
+                new User(2, "Bob", false),
+                new User(3, "Charlie", true),
+                new User(4, "Donald Duck", true)
+            ];
+        }
+
+        private static DataTable CreateStruktur()
+        {
+            DataTable dt = new DataTable("DataTableDemo");
+
+            dt.Columns.Add("Id", typeof(int));
+            dt.Columns.Add("Name", typeof(string));
+            dt.Columns.Add("IsActive", typeof(bool));
+
+            return dt;
+        }
+
+        private static DataTable LoadUsersFromDatabaseDT()
+        {
+            Console.WriteLine("Lade Users aus der Datenbank als DataTable");
+
+            DataTable dt = CreateStruktur();
+            DataRow dr = dt.NewRow();
+            dr["Id"] = 1;
+            dr["Name"] = "Alice";
+            dr["IsActive"] = false;
+            dt.Rows.Add(dr);
+
+            dr = dt.NewRow();
+            dr["Id"] = 2;
+            dr["Name"] = "Bob";
+            dr["IsActive"] = false;
+            dt.Rows.Add(dr);
+
+            dr = dt.NewRow();
+            dr["Id"] = 3;
+            dr["Name"] = "Charlie";
+            dr["IsActive"] = true;
+            dt.Rows.Add(dr);
+
+            dr = dt.NewRow();
+            dr["Id"] = 4;
+            dr["Name"] = "Donald Duck";
+            dr["IsActive"] = true;
+            dt.Rows.Add(dr);
+
+            return dt;
         }
     }
 }
