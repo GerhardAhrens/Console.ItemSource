@@ -157,39 +157,5 @@ namespace Console.ItemSource
                 this.Shortcut = shortcut;
             }
         }
-
-        public static void Wait(string text = "")
-        {
-            ConsoleColor defaultColor = Console.ForegroundColor;
-
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.CursorVisible = false;
-            if (string.IsNullOrEmpty(text) == true)
-            {
-                Console.Write('\n');
-                Console.WriteLine("Eine Taste drücken, um zum Menü zurück zukehren!");
-            }
-            else
-            {
-                Console.Write('\n');
-                Console.WriteLine($"Eine Taste drücken, um zum Menü zurück zukehren! {text}");
-            }
-
-            Console.ForegroundColor = defaultColor;
-            Console.ReadKey();
-            Console.CursorVisible = true;
-        }
-
-        public static void Print(string text, ConsoleColor setColor = ConsoleColor.White)
-        {
-            ConsoleColor defaultColor = Console.ForegroundColor;
-            Console.ForegroundColor = setColor;
-            Console.CursorVisible = false;
-
-            Console.WriteLine(text);
-
-            Console.ForegroundColor = defaultColor;
-            Console.CursorVisible = true;
-        }
     }
 }
